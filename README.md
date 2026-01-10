@@ -33,6 +33,14 @@ pip install -r requirements.txt
 Then download the pre-trained models from Zenodo:
 [Download models.zip from Zenodo](https://zenodo.org/records/18208365/files/models.zip)
 
+Or download directly from terminal:
+```bash
+# Linux with wget
+wget https://zenodo.org/records/18208365/files/models.zip
+
+# Windows/Linux with curl
+curl -L -O https://zenodo.org/records/18208365/files/models.zip
+
 Extract `models.zip` in the `mslenses/` directory:
 ```bash
 unzip models.zip
