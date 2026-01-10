@@ -34,7 +34,7 @@ def from_prediction_to_orig_space(
     # Load inverse transformation matrices (from preprocessing)
     inv_transforms = [
         f"{work_directory}/transform_0.mat",
-        f"{work_directory}/transform_1.mat"
+        f"{work_directory}/transform_1.nii.gz"
     ]
     # Load original FLAIR as reference space
     orig_flair = ants.image_read(image)

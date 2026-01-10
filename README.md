@@ -65,7 +65,7 @@ nnunetv2==2.6.2
 HD-BET==2.0.1
 ```
 
-### USage
+### Usage
 
 **Basic Usage**
 
@@ -157,7 +157,10 @@ The hysteresis-thresholded output typically provides the most accurate results, 
 ### Adaptive Hysteresis Thresholding
 
 The system implements a FLAIR-adaptive hysteresis algorithm that adjusts probability thresholds based on local intensity similarity. For each candidate voxel, the threshold is computed as:
-$$\text{T}_{\text{adaptive}} = \text{T}_{\text{low}} + (\text{T}_{\text{high}} - \text{T}_{\text{low}}) \times (1 - w)$$
+
+$$
+\text{T}_{\text{adaptive}} = \text{T}_{\text{low}} + (\text{T}_{\text{high}} - \text{T}_{\text{low}}) \times (1 - w)
+$$
 
 where $w$ represents FLAIR intensity ($I$) similarity to the seed region:
 $$w = \exp\left(-\frac{(\text{I}_i - \text{I}_j)^2}{2\sigma^2}\right)$$
