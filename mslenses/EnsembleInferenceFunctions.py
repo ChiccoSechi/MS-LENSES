@@ -224,7 +224,7 @@ def inference_nnUNet(
         "--save_probabilities",
         "-device", device
     ], check=True, capture_output=True)
-    print("Done!")
+    print("Done.")
 
 def inference(
     models: list,

@@ -119,7 +119,7 @@ def flair_preprocessing(
             brain_extraction(f"{work_directory}/flair.nii.gz", f"{work_directory}/flair_hdbet.nii.gz", device)
         # FLAIR brain extracted
         flair = ants.image_read(f"{work_directory}/flair_hdbet.nii.gz")
-        print("Done!")
+        print("Done.")
     # ANTS PREPROCESSING
     # FLAIR registration on MNI152 template
     print("    -> Registration (MNI152 template)... ", end="")

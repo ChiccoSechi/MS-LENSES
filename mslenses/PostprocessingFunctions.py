@@ -28,16 +28,26 @@ def from_prediction_to_orig_space(
     Returns:
         str: Path to the probability map in original space.
     """
+    title = "POSTPROCESSING"
+    width = 60
+    print()
+    print("|" + "=" * (width - 2) + "|")
+    print(f"|{title.center(width - 2)}|")
+    print("|" + "=" * (width - 2) + "|")
     # Load masks from MNI space
     binary_mask = ants.image_read(f"{work_directory}/{input_path_binary}")
     probability_mask = ants.image_read(f"{work_directory}/{input_path_probability}")
     # Load inverse transformation matrices (from preprocessing)
+    print("    -> Loading MNI152 registration \"invtransforms\"... ", end="")
     inv_transforms = [
         f"{work_directory}/transform_0.mat",
         f"{work_directory}/transform_1.nii.gz"
     ]
+    print("Done.")
     # Load original FLAIR as reference space
     orig_flair = ants.image_read(image)
+    print("    -> Application of invtransform...")
+    print("        - binary mask (MNI152) to original space... ", end="")
     # Apply inverse transforms to binary mask (nearest neighbor for labels)
     binary_original = ants.apply_transforms(
         fixed=orig_flair,
@@ -45,6 +55,8 @@ def from_prediction_to_orig_space(
         transformlist=inv_transforms,
         interpolator="genericLabel"
     )
+    print("Done.")
+    print("        - probability mask (MNI152) to original space... ", end="")
     # Apply inverse transforms to probability map (linear interpolation)
     probability_original = ants.apply_transforms(
         fixed=orig_flair,
@@ -52,6 +64,7 @@ def from_prediction_to_orig_space(
         transformlist=inv_transforms,
         interpolator="linear"
     )
+    print("Done.")
     # Save transformed masks in original space
     ants.image_write(binary_original, f"{work_directory}/flair_orig_binary.nii.gz")
     ants.image_write(probability_original, f"{work_directory}/flair_orig_probs.nii.gz")
@@ -59,6 +72,8 @@ def from_prediction_to_orig_space(
         os.remove(f"{work_directory}/transform_0.mat")
     if os.path.exists(f"{work_directory}/transform_1.nii.gz"):
         os.remove(f"{work_directory}/transform_1.nii.gz")
+    print("    -> Binary output uploaded and available in\n       work_dir/*orig_binary.nii.gz!") 
+    print("    -> Probability output uploaded and available in\n       work_dir/*orig_probs.nii.gz!")
     return f"{work_directory}/flair_orig_probs.nii.gz"
     
 def adaptive_hysteresis_threshold(
@@ -107,6 +122,8 @@ def adaptive_hysteresis_threshold(
             f"Invalid threshold values: low={low_threshold}, high={high_threshold}."
             "\nLow threshold must be less than or equal to high threshold."
         )
+    print()
+    print("    -> Hysteresis Threshold on the probability mask... ", end="")
     # Load probability map from file
     probability_mask_nii = nib.load(input_path) 
     probability_mask = probability_mask_nii.get_fdata()
@@ -180,6 +197,7 @@ def adaptive_hysteresis_threshold(
                     visited[nx, ny, nz] = True
                     result[nx, ny, nz] = True
                     queue.append(np.array([nx, ny, nz]))
+    print("Done.")
     # Save binary result as NIfTI
     result_nii = nib.Nifti1Image(
             result,
@@ -187,3 +205,4 @@ def adaptive_hysteresis_threshold(
             probability_mask_nii.header
         )
     nib.save(result_nii, f"{work_directory}/flair_probs_hysteresis.nii.gz")
+    print("    -> Hysteresis output uploaded and available in\n       work_dir/*_probs_hysteresis.nii.gz!")

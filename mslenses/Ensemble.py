@@ -129,22 +129,22 @@ print(f"|{title.center(width - 2)}|")
 print("|" + "=" * (width - 2) + "|")  
 print("You can find the inference and preprocessing results in work_dir/:")
 print("    -> *_preprocessed.nii.gz:",
-      "           └── Flair image in MNI152 space.")
+      "\n        Flair image in MNI152 space.")
 print()
 print("    -> *_preprocessed_binary.nii.gz:", 
-      "           └── Binary mask in MNI152 space.")
+      "\n        Binary mask in MNI152 space.")
 print()
 print("    -> *_preprocessed_probs.nii.gz:", 
-      "           └── Probability mask in MNI152 space.")
+      "\n        Probability mask in MNI152 space.")
 print()
 print("    -> *_orig_binary.nii.gz:", 
-      "           └── Binary mask in original space.")
+      "\n        Binary mask in original space.")
 print()
 print("    -> *_orig_probs.nii.gz:", 
-      "           └── Probability mask in original space.")
+      "\n        Probability mask in original space.")
 print()
 print("    -> *_probs_hysteresis.nii.gz:",
-      "           └── Binarized mask using hysteresis threshold.")
+      "\n        Binarized mask using hysteresis threshold.")
 print()
 print("The most accurate results are obtained with" 
       "\n_probs_hysteresis.nii.gz, however, we have chosen to make" 
