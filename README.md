@@ -4,7 +4,7 @@ A robust deep learning ensemble for automatic segmentation of Multiple Sclerosis
 
 ### Overview
 
-MS-LENSES implements a sophisticated ensemble approach that combines four state-of-the-art neural network architectures to achieve accurate and reliable MS lesion detection. The system integrates three MONAI-based models (UNet with residual units, Swin-UNETR, and SegResNetDS) with a self-configuring nnUNet model, leveraging their complementary strengths through weighted averaging. The pipeline handles the complete workflow from raw FLAIR images to final segmentation masks, including preprocessing, inference, and postprocessing with adaptive hysteresis thresholding.
+MS-LENSES implements an ensemble approach that combines four state-of-the-art neural network architectures to achieve accurate and reliable MS lesion detection. The system integrates three MONAI-based models (UNet with residual units, Swin-UNETR, and SegResNetDS) with a self-configuring nnUNet model, leveraging their complementary strengths through weighted averaging. The pipeline handles the complete workflow from raw FLAIR images to final segmentation masks, including preprocessing, inference, and postprocessing with adaptive hysteresis thresholding.
 
 Model predictions are combined using validation performance-weighted averaging based on Dice similarity coefficients, with a final 50/50 ensemble between MONAI models and nnUNet to balance their different strengths.
 
@@ -12,15 +12,36 @@ Model predictions are combined using validation performance-weighted averaging b
 
 ### Key Features
 
-**Comprehensive Preprocessing Pipeline**
+**Preprocessing Pipeline**
 
 The system standardizes input FLAIR images through a multi-step pipeline that ensures consistent data quality. N4 bias field correction removes intensity inhomogeneities caused by scanner artifacts, while HD-BET performs robust brain extraction with GPU acceleration when available. Finally, non-linear SyN registration aligns each image to MNI152 standard space, enabling the neural networks to operate on normalized anatomy. All transformation matrices are preserved to enable accurate mapping back to the original patient space.
 
 ![Preprocessing](imgs/Preprocessing.png)
 
+
+**Inference**
+
+Before inference, the data undergoes MONAI preprocessing transformations that prepare it for the neural networks: background voxels are cropped, intensities are normalized, spatial dimensions are padded for network compatibility, and a fixed-size region is extracted through center cropping. The preprocessed data is then passed through all four models, whose predictions are combined using weighted averaging based on their validation performance. The ensemble produces both binary segmentation masks and continuous probability maps for further analysis.
+
 **Advanced Postprocessing**
 
-Beyond standard thresholding, MS-LENSES implements a FLAIR-adaptive hysteresis algorithm that intelligently refines segmentation boundaries. The method grows lesion regions from high-confidence seeds, dynamically adjusting probability thresholds based on local FLAIR intensity similarity. This approach allows aggressive expansion in tissue with similar intensities while maintaining strict requirements in dissimilar regions, effectively reducing false positives while preserving true lesion boundaries. All predictions are automatically transformed back to the original patient space, providing multiple output formats including binary masks, probability maps, and the refined hysteresis-thresholded segmentation.
+Beyond standard thresholding, MS-LENSES implements a FLAIR-adaptive hysteresis algorithm that refines segmentation boundaries. The method grows lesion regions from high-confidence seeds, dynamically adjusting probability thresholds based on local FLAIR intensity similarity. This approach allows aggressive expansion in tissue with similar intensities while maintaining strict requirements in dissimilar regions, effectively reducing false positives while preserving true lesion boundaries. All predictions are automatically transformed back to the original patient space, providing multiple output formats including binary masks, probability maps, and the refined hysteresis-thresholded segmentation.
+
+### Requirements
+
+The system has been tested with Python 3.11 and requires Python versions below 3.12 for compatibility with all dependencies. A CUDA-capable GPU is strongly recommended for practical use, as CPU inference is significantly slower. For optimal performance during brain extraction, at least 16GB of GPU memory is recommended, though the system will automatically fall back to CPU processing if insufficient memory is detected.
+
+**Important:** PyTorch must be installed separately before installing other dependencies. Install the appropriate version for your system from [pytorch.org](https://pytorch.org/get-started/locally/). For GPU support, ensure CUDA-compatible PyTorch is installed.
+
+Core dependencies:
+```txt
+monai==1.5.1
+antspyx==0.6.1
+nibabel==5.3.2
+numpy==1.26.4
+nnunetv2==2.6.2
+HD-BET==2.0.1
+```
 
 ### Installation
 
@@ -51,87 +72,7 @@ This will create the following directories:
 - `models/` (contains UNet.pth, SwinUNETR.pth, SegResNetDS.pth)
 - `nnUNet/` (contains checkpoint_best.pth)
 
-### Docker (Alternative Installation)
-
-MS-LENSES can be run in a Docker container for simplified deployment without manual dependency management.
-
-**Prerequisites:**
-- [Docker](https://docs.docker.com/get-docker/) installed
-
-**Build the Docker image:**
-```bash
-git clone https://github.com/ChiccoSechi/MS-LENSES.git
-cd MS-LENSES
-
-# Download pre-trained models (required)
-wget https://zenodo.org/records/18208365/files/models.zip
-unzip models.zip -d mslenses/
-
-# Build Docker image
-docker build -t ms-lenses:latest .
-```
-
-**Run analysis:**
-```bash
-# Create output directory
-mkdir results
-
-docker run --gpus all --rm -it
-  -v [host_output_path]:[container_output_path]
-  -v [host_input_path]:[container_input_path]:ro
-    [image_name] -i [container_input_filename]
-```
-
-Replace `[host_output_path]` with your desired output path and `[host_input_path]` with your FLAIR image path.
-
-**Examples:**
-```bash
-# Run with GPU (recommended)
-docker run --gpus all --rm -it
-  -v /absolute/path/to/output_dir:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  ms-lenses:latest -i input.nii.gz
-
-# Run with CPU (slower, not recommended)
-docker run --rm -it
-  -v /absolute/path/to/output_dir:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  ms-lenses:latest -i input.nii.gz
-```
-
-Results will be saved in the `output_dir/` directory with the same output files as described in [Output Files](#output-files).
-
-**Advanced usage with custom parameters:**
-All [parameters](#parameters) available in the standard installation can be used with Docker. Customize thresholds, skip preprocessing, or adjust connectivity as needed:
-
-```bash
-docker run --gpus all --rm -it \
-  -v /absolute/path/to/output_dir:/app/work_dir \
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro \
-  ms-lenses:latest \
-  -i input.nii.gz --preprocessed -lt 0.3 -ht 0.6 -s 0.1 -c 6
-```
-
-### Requirements
-
-The system has been tested with Python 3.11 and requires Python versions below 3.12 for compatibility with all dependencies. A CUDA-capable GPU is strongly recommended for practical use, as CPU inference is significantly slower. For optimal performance during brain extraction, at least 16GB of GPU memory is recommended, though the system will automatically fall back to CPU processing if insufficient memory is detected.
-
-
-Core dependencies:
-```txt
-monai==1.5.1
-antspyx==0.6.1
-nibabel==5.3.2
-numpy==1.26.4
-nnunetv2==2.6.2
-HD-BET==2.0.1
-```
-
-**Docker users:** All dependencies are pre-installed in the Docker image. See the [Docker](#docker-alternative-installation) section for containerized deployment.
-
 ### Usage
-
-**Basic Usage**
 
 Process a FLAIR image with default settings:
 
@@ -184,24 +125,99 @@ Ensemble.py -i flair.nii.gz
 - `-s, --sigma`: FLAIR similarity bandwidth parameter (default: 0.1)
 - `-c, --connectivity`: Voxel neighborhood connectivity, options: 6, 18, 26 (default: 6)
 
-## Pipeline Stages
+### Docker Hub (Recommended for Quick Start)
 
-### 1. Preprocessing
-- Applies N4 bias field correction to normalize intensities
-- Performs brain extraction using HD-BET
-- Registers image to MNI152 template space using non-linear SyN registration
-- Saves transformation matrices for later inverse mapping
+**Prerequisites:**
+- [Docker](https://docs.docker.com/get-docker/) installed
 
-### 2. Inference
-- Preprocesses data for inference using a MONAI transformation pipeline: **CropForeground** removes background, **NormalizeIntensity** standardizes voxel values, **DivisiblePad** ensures compatibility with network architectures, and **CenterSpatialCrop** extracts a fixed-size region
-- Runs inference through all four models
-- Combines predictions using weighted averaging based on validation performance
-- Generates both binary masks and probability maps
+Pull and run the pre-built image directly from Docker Hub without manual installation:
 
-### 3. Postprocessing
-- Transforms predictions back to original patient space using saved inverse transformations
-- Applies FLAIR-adaptive hysteresis thresholding that considers local intensity similarity
-- Produces final refined segmentation masks
+**Pull the image:**
+```bash
+docker pull chiccosechi/ms-lenses:latest
+```
+
+**Run analysis (simple approach):**
+```bash
+# Run with GPU (recommended)
+docker run --gpus all --rm -it
+  -v /absolute/path/to/results:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  chiccosecchi/ms-lenses:latest -i /app/input.nii.gz
+
+#Run with CPU (slower, not recommended)
+docker run --rm -it 
+  -v /absolute/path/to/results:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  chiccosecchi/ms-lenses:latest -i /app/input.nii.gz
+```
+
+Mounts input and output to the specific paths expected by the container (`/app/input.nii.gz` and `/app/work_dir` as defined in the Dockerfile). The input file must be referenced with its full container path `/app/input.nii.gz`.
+
+Results will be saved in your data directory with the same output files as described in [Output Files](#output-files).
+
+### Docker (Build from source)
+
+For users who need to customize the Docker image or prefer building locally, MS-LENSES can be built from the repository.
+
+**Clone the repository:**
+```bash
+git clone https://github.com/ChiccoSechi/MS-LENSES.git
+cd MS-LENSES
+
+# Download pre-trained models (required)
+# Linux with wget
+wget https://zenodo.org/records/18208365/files/models.zip
+
+# Windows/Linux with curl
+curl -L -O https://zenodo.org/records/18208365/files/models.zip
+
+unzip models.zip -d mslenses/
+
+# Build Docker image (DON'T FORGET ".")
+docker build -t ms-lenses:latest .
+```
+
+**Run analysis:**
+```bash
+docker run --gpus all --rm -it
+  -v [host_output_path]:[container_output_path]
+  -v [host_input_path]:[container_input_path]:ro
+    [image_name] -i [container_input_filename]
+```
+
+Replace `[host_output_path]` with your desired output path and `[host_input_path]` with your FLAIR image path.
+
+**Examples:**
+```bash
+# Create output directory
+mkdir results
+
+# Run with GPU (recommended)
+docker run --gpus all --rm -it
+  -v /absolute/path/to/output_dir:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  ms-lenses:latest -i input.nii.gz
+
+# Run with CPU (slower, not recommended)
+docker run --rm -it
+  -v /absolute/path/to/output_dir:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  ms-lenses:latest -i input.nii.gz
+```
+
+Results will be saved in the `output_dir/` directory with the same output files as described in [Output Files](#output-files).
+
+**Advanced usage with custom parameters:**
+All [parameters](#parameters) available in the standard installation can be used with Docker. Customize thresholds, skip preprocessing, or adjust connectivity as needed:
+
+```bash
+docker run --gpus all --rm -it
+  -v /absolute/path/to/output_dir:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  ms-lenses:latest 
+  -i input.nii.gz --preprocessed -lt 0.3 -ht 0.6 -s 0.1 -c 6
+```
 
 ## Output Files
 
@@ -235,7 +251,14 @@ $$
 This approach allows lesion regions to grow more aggressively in areas with similar FLAIR intensities while maintaining stricter requirements in dissimilar regions, reducing false positives while preserving lesion boundaries.
 
 ### Model Weighting
+
 Model contributions are weighted based on validation performance (Dice Similarity Coefficient):
+
+$$
+w_i = \frac{D_i^k}{\sum_{j=1}^{N} D_j^k}
+$$
+
+where $D_i$ represents the Dice score for model $i$:
 
 UNet: 0.8424
 SwinUNETR: 0.8233
@@ -243,9 +266,11 @@ SegResNetDS: 0.8550
 
 These weights can be adjusted by modifying the `models_weights()` function in [`EnsembleInferenceFunctions.py`](MS-LENSES\EnsembleInferenceFunctions.py).
 
+
+
 ### Hardware Considerations
 
-- **GPU (CUDA)**: Recommended for practical use. Inference takes several minutes.
+- **GPU (CUDA)**: Recommended for practical use. Inference and preprocessing takes some minutes.
 - **CPU**: Supported but significantly slower (hours instead of minutes). The system will warn users and request confirmation before proceeding with CPU-based inference.
 - HD-BET automatically falls back to CPU if GPU memory is insufficient (< 16GB).
 
