@@ -40,6 +40,7 @@ wget https://zenodo.org/records/18208365/files/models.zip
 
 # Windows/Linux with curl
 curl -L -O https://zenodo.org/records/18208365/files/models.zip
+```
 
 Extract `models.zip` in the `mslenses/` directory:
 ```bash
@@ -49,6 +50,67 @@ unzip models.zip
 This will create the following directories:
 - `models/` (contains UNet.pth, SwinUNETR.pth, SegResNetDS.pth)
 - `nnUNet/` (contains checkpoint_best.pth)
+
+### Docker (Alternative Installation)
+
+MS-LENSES can be run in a Docker container for simplified deployment without manual dependency management.
+
+**Prerequisites:**
+- [Docker](https://docs.docker.com/get-docker/) installed
+
+**Build the Docker image:**
+```bash
+git clone https://github.com/ChiccoSechi/MS-LENSES.git
+cd MS-LENSES
+
+# Download pre-trained models (required)
+wget https://zenodo.org/records/18208365/files/models.zip
+unzip models.zip -d mslenses/
+
+# Build Docker image
+docker build -t ms-lenses:latest .
+```
+
+**Run analysis:**
+```bash
+# Create output directory
+mkdir results
+
+docker run --gpus all --rm -it
+  -v [host_output_path]:[container_output_path]
+  -v [host_input_path]:[container_input_path]:ro
+    [image_name] -i [container_input_filename]
+```
+
+Replace `[host_output_path]` with your desired output path and `[host_input_path]` with your FLAIR image path.
+
+**Examples:**
+```bash
+# Run with GPU (recommended)
+docker run --gpus all --rm -it
+  -v /absolute/path/to/output_dir:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  ms-lenses:latest -i input.nii.gz
+
+# Run with CPU (slower, not recommended)
+docker run --rm -it
+  -v /absolute/path/to/output_dir:/app/work_dir
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
+  ms-lenses:latest -i input.nii.gz
+```
+
+Results will be saved in the `output_dir/` directory with the same output files as described in [Output Files](#output-files).
+
+**Advanced usage with custom parameters:**
+All [parameters](#parameters) available in the standard installation can be used with Docker. Customize thresholds, skip preprocessing, or adjust connectivity as needed:
+
+```bash
+docker run --gpus all --rm -it \
+  -v /absolute/path/to/output_dir:/app/work_dir \
+  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro \
+  ms-lenses:latest \
+  -i input.nii.gz --preprocessed -lt 0.3 -ht 0.6 -s 0.1 -c 6
+```
 
 ### Requirements
 
@@ -64,6 +126,8 @@ numpy==1.26.4
 nnunetv2==2.6.2
 HD-BET==2.0.1
 ```
+
+**Docker users:** All dependencies are pre-installed in the Docker image. See the [Docker](#docker-alternative-installation) section for containerized deployment.
 
 ### Usage
 
@@ -163,7 +227,10 @@ $$
 $$
 
 where $w$ represents FLAIR intensity ($I$) similarity to the seed region:
-$$w = \exp\left(-\frac{(\text{I}_i - \text{I}_j)^2}{2\sigma^2}\right)$$
+
+$$
+w = \exp\left(-\frac{(\text{I}_i - \text{I}_j)^2}{2\sigma^2}\right)
+$$
 
 This approach allows lesion regions to grow more aggressively in areas with similar FLAIR intensities while maintaining stricter requirements in dissimilar regions, reducing false positives while preserving lesion boundaries.
 
