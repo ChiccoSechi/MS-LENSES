@@ -10,14 +10,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
 # Set work directory
-WORKDIR /app
+WORKDIR /mslenses
 
 # Copy mslenses directory
-COPY mslenses/ /app
+COPY mslenses/ /mslenses
 
 # Download python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Set entrypoint
-ENTRYPOINT ["python", "Ensemble.py"]
+ENTRYPOINT ["python", "mslenses.py"]
 CMD ["--help"]

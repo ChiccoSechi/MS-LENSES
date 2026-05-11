@@ -29,7 +29,7 @@ Beyond standard thresholding, MS-LENSES implements a FLAIR-adaptive hysteresis a
 
 ### Requirements
 
-The system has been tested with Python 3.11 and requires Python versions below 3.12 for compatibility with all dependencies. A CUDA-capable GPU is strongly recommended for practical use, as CPU inference is significantly slower. For optimal performance during brain extraction, at least 16GB of GPU memory is recommended, though the system will automatically fall back to CPU processing if insufficient memory is detected.
+The system has been tested with Python 3.11 and requires Python versions below 3.12 for compatibility with all dependencies. A CUDA-capable GPU is required. For optimal performance during brain extraction, at least 16GB of GPU memory is recommended, though the system will automatically fall back to CPU processing if insufficient memory is detected.
 
 **Important:** PyTorch must be installed separately before installing other dependencies. Install the appropriate version for your system from [pytorch.org](https://pytorch.org/get-started/locally/). For GPU support, ensure CUDA-compatible PyTorch is installed.
 
@@ -68,7 +68,7 @@ Extract `models.zip` in the `mslenses/` directory:
 unzip models.zip
 ```
 
-This will create the following directories:
+This will create the following directories (inside mslenses directory):
 - `models/` (contains UNet.pth, SwinUNETR.pth, SegResNetDS.pth)
 - `nnUNet/` (contains checkpoint_best.pth)
 
@@ -77,49 +77,80 @@ This will create the following directories:
 Process a FLAIR image with default settings:
 
 ```bash
-python Ensemble.py --input /path/to/flair.nii.gz
+python mslenses.py --input /path/to/flair.nii.gz
 
 # short version:
-python Ensemble.py -i /path/to/flair.nii.gz
-```
-
-or by placing the MRI in the MS-LENSES folder:
-
-```bash
-python Ensemble.py --input flair.nii.gz
-
-# short version:
-python Ensemble.py -i flair.nii.gz
+python mslenses.py -i /path/to/flair.nii.gz
 ```
 
 **Advanced Options**
 
-Skip preprocessing for already-processed images:
+Skip preprocessing for already-processed images (this option allow to skip N4 and Brain Extraction steps):
 
 ```bash 
-Ensemble.py -i preprocessed_flair.nii.gz --preprocessed
+python mslenses.py -i /path/to/preprocessed_flair.nii.gz --preprocessed
+
+# short version:
+python mslenses.py -i /path/to/preprocessed_flair.nii.gz -p
 ```
+
+Skip full preprocessing for already-processed images (this option allow to skip N4, Brain Extraction and Registration to MNI152 template):
+
+```bash 
+python mslenses.py -i /path/to/preprocessed_flair.nii.gz --full_preprocessed
+
+# short version:
+python mslenses.py -i /path/to/preprocessed_flair.nii.gz -fp
+```
+
+Preprocessing-only execution (without inference or postprocessing)
+```bash 
+python mslenses.py -i /path/to/preprocessed_flair.nii.gz --only_preprocessing
+
+# short version:
+python mslenses.py -i /path/to/preprocessed_flair.nii.gz -op
+```
+
+*Note: -p, -fp and -op cannot be used together.*
 
 Customize hysteresis thresholding parameters for any experiments (default values are already preset):
 ```bash
-Ensemble.py -i flair.nii.gz
+python mslenses.py -i flair.nii.gz
             --low_threshold 0.2
             --high_threshold 0.7
             --sigma 0.15
             --connectivity 18
 
 # short version:
-Ensemble.py -i flair.nii.gz
+python mslenses.py -i flair.nii.gz
             -lt 0.2
             -ht 0.7
             -s 0.15
             -c 18
 ```
 
+**Batch Processing**
+
+To process multiple FLAIR images at once, you can iterate over a directory from the terminal without any additional arguments.
+
+Linux/Mac (bash):
+```bash
+for f in /path/to/flairs/*.nii.gz; do python mslenses.py -i "$f"; done
+```
+
+Windows (PowerShell):
+```powershell
+Get-ChildItem C:\path\to\flairs\*.nii.gz | ForEach-Object { python mslenses.py -i $_.FullName }
+```
+
+*Note: the terminal must be run from the `mslenses/` directory.*
+
 ### Parameters
 
 - `-i, --input`: Path to input FLAIR image (required, must be .nii.gz format)
-- `--preprocessed`: Skip preprocessing (N4 correction and brain extraction) if already done
+- `-p, --preprocessed`: Skip preprocessing (N4 correction and brain extraction) if already done
+- `-fp, --full_preprocessed`: Skip preprocessing (N4 correction, brain extraction and MNI152 template registration) if already done
+- `-op, --only_preprocessed`: Preprocessing-only execution (skip inference and postprocessing)
 - `-lt, --low_threshold`: Minimum probability threshold for hysteresis (default: 0.3)
 - `-ht, --high_threshold`: High-confidence seed threshold (default: 0.6)
 - `-s, --sigma`: FLAIR similarity bandwidth parameter (default: 0.1)
@@ -139,20 +170,14 @@ docker pull chiccosechi/ms-lenses:latest
 
 **Run analysis (simple approach):**
 ```bash
-# Run with GPU (recommended)
-docker run --gpus all --rm -it
-  -v /absolute/path/to/results:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  chiccosecchi/ms-lenses:latest -i /app/input.nii.gz
-
-#Run with CPU (slower, not recommended)
-docker run --rm -it 
-  -v /absolute/path/to/results:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  chiccosecchi/ms-lenses:latest -i /app/input.nii.gz
+# Run with GPU (mandatory)
+docker run --gpus all --rm -it \
+  -v /absolute/path/to/results:/mslenses/directory \
+  -v /absolute/path/to/flair.nii.gz:/mslenses/input.nii.gz:ro \
+  chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz
 ```
 
-Mounts input and output to the specific paths expected by the container (`/app/input.nii.gz` and `/app/work_dir` as defined in the Dockerfile). The input file must be referenced with its full container path `/app/input.nii.gz`.
+Mounts input and output to the specific paths expected by the container (`/mslenses/input.nii.gz` and `/mslenses/directory` as defined in the Dockerfile). The input file must be referenced with its full container path `/mslenses/input.nii.gz`.
 
 Results will be saved in your data directory with the same output files as described in [Output Files](#output-files).
 
@@ -164,8 +189,10 @@ For users who need to customize the Docker image or prefer building locally, MS-
 ```bash
 git clone https://github.com/ChiccoSechi/MS-LENSES.git
 cd MS-LENSES
+```
 
-# Download pre-trained models (required)
+**Download pre-trained models (required):**
+```bash
 # Linux with wget
 wget https://zenodo.org/records/18208365/files/models.zip
 
@@ -173,17 +200,19 @@ wget https://zenodo.org/records/18208365/files/models.zip
 curl -L -O https://zenodo.org/records/18208365/files/models.zip
 
 unzip models.zip -d mslenses/
+```
 
-# Build Docker image (DON'T FORGET ".")
-docker build -t ms-lenses:latest .
+**Build Docker image:**
+```bash
+docker build -t [image_name] .
 ```
 
 **Run analysis:**
 ```bash
-docker run --gpus all --rm -it
-  -v [host_output_path]:[container_output_path]
-  -v [host_input_path]:[container_input_path]:ro
-    [image_name] -i [container_input_filename]
+docker run --gpus all --rm -it \
+  -v [host_output_path]:[container_output_path] \
+  -v [host_input_path]:[container_input_path]:ro \
+  [image_name] -i [container_input_filename]
 ```
 
 Replace `[host_output_path]` with your desired output path and `[host_input_path]` with your FLAIR image path.
@@ -191,33 +220,19 @@ Replace `[host_output_path]` with your desired output path and `[host_input_path
 **Examples:**
 ```bash
 # Create output directory
-mkdir results
+mkdir output_dir
 
-# Run with GPU (recommended)
-docker run --gpus all --rm -it
-  -v /absolute/path/to/output_dir:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  ms-lenses:latest -i input.nii.gz
-
-# Run with CPU (slower, not recommended)
-docker run --rm -it
-  -v /absolute/path/to/output_dir:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  ms-lenses:latest -i input.nii.gz
+# Run with GPU (mandatory)
+docker run --gpus all --rm -it \
+  -v /absolute/path/to/output_dir:/mslenses/directory \
+  -v /absolute/path/to/flair.nii.gz:/input.nii.gz:ro \
+  ms-lenses:latest -i /input.nii.gz
 ```
 
 Results will be saved in the `output_dir/` directory with the same output files as described in [Output Files](#output-files).
 
 **Advanced usage with custom parameters:**
-All [parameters](#parameters) available in the standard installation can be used with Docker. Customize thresholds, skip preprocessing, or adjust connectivity as needed:
-
-```bash
-docker run --gpus all --rm -it
-  -v /absolute/path/to/output_dir:/app/work_dir
-  -v /absolute/path/to/flair.nii.gz:/app/input.nii.gz:ro
-  ms-lenses:latest 
-  -i input.nii.gz --preprocessed -lt 0.3 -ht 0.6 -s 0.1 -c 6
-```
+All [parameters](#parameters) available in the standard installation can be used with Docker. Customize thresholds, skip preprocessing, or adjust connectivity as needed.
 
 ## Output Files
 
@@ -225,10 +240,10 @@ All results are saved in the `work_dir/` directory:
 
 - `*_preprocessed.nii.gz`: FLAIR image registered to MNI152 space
 - `*_preprocessed_binary.nii.gz`: Binary segmentation mask in MNI152 space
-- `*_preprocessed_probs.nii.gz`: Probability map in MNI152 space
+- `*_preprocessed_probability.nii.gz`: Probability map in MNI152 space
 - `*_orig_binary.nii.gz`: Binary mask in original patient space
-- `*_orig_probs.nii.gz`: Probability map in original patient space
-- `*_probs_hysteresis.nii.gz`: Final refined segmentation using adaptive thresholding
+- `*_orig_probability.nii.gz`: Probability map in original patient space
+- `*_orig_hysteresis.nii.gz`: Final refined segmentation using adaptive thresholding
 
 The hysteresis-thresholded output typically provides the most accurate results, though all intermediate outputs are retained for analysis and research purposes.
 
@@ -264,14 +279,13 @@ UNet: 0.8424
 SwinUNETR: 0.8233
 SegResNetDS: 0.8550
 
-These weights can be adjusted by modifying the `models_weights()` function in [`EnsembleInferenceFunctions.py`](MS-LENSES\EnsembleInferenceFunctions.py).
+These weights can be adjusted by modifying the `_models_weights()` function in [`utils.py`](MS-LENSES\utils.py).
 
 
 
 ### Hardware Considerations
 
-- **GPU (CUDA)**: Recommended for practical use. Inference and preprocessing takes some minutes.
-- **CPU**: Supported but significantly slower (hours instead of minutes). The system will warn users and request confirmation before proceeding with CPU-based inference.
+- **GPU (CUDA)**: Mandatory for practical use. Inference and preprocessing takes some minutes.
 - HD-BET automatically falls back to CPU if GPU memory is insufficient (< 16GB).
 
 Note that ANTs preprocessing (N4 bias correction and MNI152 registration) always runs on CPU regardless of GPU availability. N4 correction is particularly time-intensive and heavily dependent on CPU performance. 
