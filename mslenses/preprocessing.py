@@ -87,15 +87,15 @@ class PreprocessingPipeline:
     def brain_extraction(self):
         """
         Performs brain extraction using HD-BET.
-        Falls back to CPU if GPU VRAM is insufficient (< 16 GB).
+        Falls back to CPU if GPU VRAM is insufficient (< 6 GB).
         """
            
         if self.device.type == "cuda":
             # Compute total VRAM in GB
             total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            if total < 16.0:
+            if total < 6.0:
                 logger.warning(
-                    f"GPU has only {total:.2f} GB VRAM. HD-BET needs >16 GB. Switching to CPU."
+                    f"GPU has only {total:.2f} GB VRAM. HD-BET needs > 6 GB. Switching to CPU."
                 )
                 # Fall back to CPU
                 self.device = torch.device("cpu")

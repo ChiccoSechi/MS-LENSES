@@ -177,7 +177,7 @@ docker pull chiccosechi/ms-lenses:latest
 **Run analysis (simple approach):**
 ```bash
 # Run with GPU (mandatory)
-docker run --gpus all --rm -it \
+docker run --gpus all --rm \
   -v /absolute/path/to/results:/mslenses/directory \
   -v /absolute/path/to/flair.nii.gz:/mslenses/input.nii.gz:ro \
   chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz
@@ -186,6 +186,32 @@ docker run --gpus all --rm -it \
 Mounts input and output to the specific paths expected by the container (`/mslenses/input.nii.gz` and `/mslenses/directory` as defined in the Dockerfile). The input file must be referenced with its full container path `/mslenses/input.nii.gz`.
 
 Results will be saved in your data directory with the same output files as described in [Output Files](#output-files).
+
+**Batch processing:**
+
+Linux/Mac (bash):
+```bash
+for f in /path/to/flairs/*.nii.gz; do
+    name=$(basename "$f" .nii.gz)
+    docker run --gpus all --rm \
+      -v /path/to/results/$name:/mslenses/directory \
+      -v $f:/mslenses/input.nii.gz:ro \
+      chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz
+done
+```
+
+Windows (PowerShell):
+```powershell
+Get-ChildItem C:\path\to\flairs\*.nii.gz | ForEach-Object {
+    $name = $_.BaseName.Replace(".nii", "")
+    docker run --gpus all --rm `
+      -v "C:\path\to\results\$name:/mslenses/directory" `
+      -v "$($_.FullName):/mslenses/input.nii.gz:ro" `
+      chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz
+}
+```
+
+*Note: each patient's results will be saved in a dedicated subdirectory.*
 
 ### Docker (Build from source)
 
@@ -215,7 +241,7 @@ docker build -t [image_name] .
 
 **Run analysis:**
 ```bash
-docker run --gpus all --rm -it \
+docker run --gpus all --rm \
   -v [host_output_path]:[container_output_path] \
   -v [host_input_path]:[container_input_path]:ro \
   [image_name] -i [container_input_filename]
@@ -229,7 +255,7 @@ Replace `[host_output_path]` with your desired output path and `[host_input_path
 mkdir output_dir
 
 # Run with GPU (mandatory)
-docker run --gpus all --rm -it \
+docker run --gpus all --rm \
   -v /absolute/path/to/output_dir:/mslenses/directory \
   -v /absolute/path/to/flair.nii.gz:/input.nii.gz:ro \
   ms-lenses:latest -i /input.nii.gz
@@ -292,7 +318,7 @@ These weights can be adjusted by modifying the `_models_weights()` function in [
 ### Hardware Considerations
 
 - **GPU (CUDA)**: Mandatory for practical use. Inference and preprocessing takes some minutes.
-- HD-BET automatically falls back to CPU if GPU memory is insufficient (< 16GB).
+- HD-BET automatically falls back to CPU if GPU memory is insufficient (< 6GB).
 
 Note that ANTs preprocessing (N4 bias correction and MNI152 registration) always runs on CPU regardless of GPU availability. N4 correction is particularly time-intensive and heavily dependent on CPU performance. 
 
