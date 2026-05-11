@@ -74,6 +74,7 @@ def input_parser()-> argparse.Namespace:
     Returns:
         argparse.Namespace: validated arguments with attributes:
             - input (str): path to the input FLAIR image.
+            - output (str): path to the output directory
             - preprocessed (bool): whether the input is already preprocessed (N4 e BE).
             - full_preprocessed (bool): whether the input is full preprocessed (N4, BE and MNI152).
             - only_preprocessing (bool): run only preprocessing, skip inference and postprocessing.
@@ -92,6 +93,9 @@ def input_parser()-> argparse.Namespace:
     # Required input FLAIR image
     parser.add_argument("-i", "--input", type=_validate_input, required=True, 
                         help="Input file: a FLAIR image with *.nii.gz extension.\nMust exist on disk.")
+    # Output directory
+    parser.add_argument("-o", "--output", type=str, default=WORK_DIR,
+                        help="Output directory where results will be saved.\n- Default = WORK_DIR")
     # Preprocessing flags — mutually exclusive
     group = parser.add_mutually_exclusive_group()
     # Skip N4 correction and brain extraction if the image is already preprocessed

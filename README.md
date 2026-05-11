@@ -131,19 +131,25 @@ python mslenses.py -i flair.nii.gz
 
 **Batch Processing**
 
-To process multiple FLAIR images at once, you can iterate over a directory from the terminal without any additional arguments.
+To process multiple FLAIR images at once, you can iterate over a directory from the terminal. Each patient's output will be saved in a dedicated subdirectory.
 
 Linux/Mac (bash):
 ```bash
-for f in /path/to/flairs/*.nii.gz; do python mslenses.py -i "$f"; done
+for f in /path/to/flairs/*.nii.gz; do
+    name=$(basename "$f" .nii.gz)
+    python mslenses.py -i "$f" -o "/path/to/output/$name"
+done
 ```
 
 Windows (PowerShell):
 ```powershell
-Get-ChildItem C:\path\to\flairs\*.nii.gz | ForEach-Object { python mslenses.py -i $_.FullName }
+Get-ChildItem C:\path\to\flairs\*.nii.gz | ForEach-Object {
+    $name = $_.BaseName.Replace(".nii", "")
+    python mslenses.py -i $_.FullName -o "C:\path\to\output\$name"
+}
 ```
 
-*Note: the terminal must be run from the `mslenses/` directory.*
+*Note: the terminal must be run from the `mslenses/` directory. Relative paths are also supported on both systems.*
 
 ### Parameters
 

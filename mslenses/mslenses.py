@@ -14,14 +14,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 print(
-    "╔═════════════════════════════════════════════════════════╗\n"
-    "║        __  __ ___     _    ___ _  _ ___ ___ ___         ║\n"
-    "║       |  \/  / __|___| |  | __| \| / __| __/ __|        ║\n"
-    "║       | |\/| \__ \___| |__| _|| .` \__ \ _|\__ \\        ║\n"
-    "║       |_|  |_|___/   |____|___|_|\_|___/___|___/        ║\n"
-    "╠═════════════════════════════════════════════════════════╣\n"
-    "║ Multiple Sclerosis: Lesion Ensemble Segmentation System ║\n"
-    "╚═════════════════════════════════════════════════════════╝\n"
+    r"╔═════════════════════════════════════════════════════════╗" "\n"
+    r"║        __  __ ___     _    ___ _  _ ___ ___ ___         ║" "\n"
+    r"║       |  \/  / __|___| |  | __| \| / __| __/ __|        ║" "\n"
+    r"║       | |\/| \__ \___| |__| _|| .` \__ \ _|\__ \        ║" "\n"
+    r"║       |_|  |_|___/   |____|___|_|\_|___/___|___/        ║" "\n"
+    r"╠═════════════════════════════════════════════════════════╣" "\n"
+    r"║ Multiple Sclerosis: Lesion Ensemble Segmentation System ║" "\n"
+    r"╚═════════════════════════════════════════════════════════╝"
 )
 
 args = input_parser()
@@ -33,29 +33,38 @@ if not torch.cuda.is_available():
 device = torch.device("cuda")
 
 preprocessing = PreprocessingPipeline(input_file=args.input,
-                                      device=device)
+                                      device=device,
+                                      work_dir=args.output)
 
 preprocessing.mni152()
 
 if not args.full_preprocessed:
     if not args.preprocessed:
+        logger.info("Preprocessing: N4 bias field correction, brain extraction, SyN MNI152 registration.")
         preprocessing.n4()
         preprocessing.brain_extraction()
+    else:
+        logger.info("Preprocessing: SyN MNI152 registration only (N4 and brain extraction skipped).")
     preprocessing.syn_registration()
+else:
+    logger.info("Preprocessing: skipped.")
     
 if args.only_preprocessing:
     logger.info("Preprocessing only. Skipping inference and postprocessing.")
 else:
-    print("NNUNET")
-    nnunet = nnUNet(device=device)
-
+    logger.info("Inference: nnUNet preprocessing and prediction.")
+    nnunet = nnUNet(device=device,
+                    work_dir=args.output)
     nnunet.preprocessing()
     nnunet.inference()
-    print("MONAI")
-    monai_inference(device=device)
 
-    print("POSTPROCESSING")
-    postprocessing = PostprocessingPipeline(original_flair=args.input)
+    logger.info("Inference: MONAI ensemble (UNet, SwinUNETR, SegResNetDS).")
+    monai_inference(device=device,
+                    work_dir=args.output)
+
+    logger.info("Postprocessing: back-transformation to original space and adaptive hysteresis thresholding.")
+    postprocessing = PostprocessingPipeline(original_flair=args.input,
+                                            work_dir=args.output)
 
     postprocessing.to_original_space()
     postprocessing.adaptive_hysteresis_threshold(low_threshold=args.low_threshold,
