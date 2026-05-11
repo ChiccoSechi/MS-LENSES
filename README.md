@@ -194,9 +194,9 @@ Linux/Mac (bash):
 for f in /path/to/flairs/*.nii.gz; do
     name=$(basename "$f" .nii.gz)
     docker run --gpus all --rm \
-      -v /path/to/results/$name:/mslenses/directory \
+      -v /path/to/results/$name:/output/$name \
       -v $f:/mslenses/input.nii.gz:ro \
-      chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz
+      chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz -o /output/$name
 done
 ```
 
@@ -205,9 +205,9 @@ Windows (PowerShell):
 Get-ChildItem C:\path\to\flairs\*.nii.gz | ForEach-Object {
     $name = $_.BaseName.Replace(".nii", "")
     docker run --gpus all --rm `
-      -v "C:\path\to\results\$name:/mslenses/directory" `
+      -v "C:\path\to\results\$name:/output/$name" `
       -v "$($_.FullName):/mslenses/input.nii.gz:ro" `
-      chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz
+      chiccosechi/ms-lenses:latest -i /mslenses/input.nii.gz -o /output/$name
 }
 ```
 
