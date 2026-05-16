@@ -12,12 +12,13 @@ ENV PYTHONUNBUFFERED=1
 # Set work directory
 WORKDIR /mslenses
 
-# Copy mslenses directory
+# Copy pipeline code and dependencies (Gradio UI excluded)
 COPY mslenses/ /mslenses
+COPY requirements.txt /mslenses/requirements.txt
 
 # Download python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Set entrypoint
-ENTRYPOINT ["python", "mslenses.py"]
+ENTRYPOINT ["python", "mslenses_CLI.py"]
 CMD ["--help"]
