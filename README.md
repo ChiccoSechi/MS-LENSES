@@ -198,6 +198,36 @@ To stop the server, press `Ctrl+C` in the terminal. Closing the browser tab does
 **Prerequisites:**
 - [Docker](https://docs.docker.com/get-docker/) installed
 
+Two pre-built images are available on Docker Hub: a **CLI image** and a **Gradio UI image** for interactive use via browser.
+
+#### Gradio UI Image
+
+Pull and run the web interface directly. No command line required after startup:
+
+**Pull the image:**
+```bash
+docker pull chiccosechi/ms-lenses-ui:latest
+```
+
+**Run the interface:**
+```bash
+# Run with GPU (mandatory)
+docker run --gpus all --rm -p 7860:7860 chiccosechi/ms-lenses-ui:latest
+```
+
+Then open `http://localhost:7860` in your browser. Upload a FLAIR image (`.nii.gz`) through the interface and download results directly from the browser when processing is complete.
+
+**Save outputs automatically to a local folder (optional):**
+```bash
+docker run --gpus all --rm -p 7860:7860 \
+  -v /absolute/path/to/results:/mslenses/directory \
+  chiccosechi/ms-lenses-ui:latest
+```
+
+To stop the server press `Ctrl+C` in the terminal. Closing the browser tab does **not** stop the container.
+
+#### CLI Image (Scripting & Batch Processing)
+
 Pull and run the pre-built image directly from Docker Hub without manual installation:
 
 **Pull the image:**
@@ -246,7 +276,7 @@ Get-ChildItem C:\path\to\flairs\*.nii.gz | ForEach-Object {
 
 ### Docker (Build from source)
 
-For users who need to customize the Docker image or prefer building locally, MS-LENSES can be built from the repository. The Docker image packages **only** the `mslenses/` pipeline, the Gradio UI is excluded (for now).
+For users who need to customize the Docker image or who prefer to build it locally, MS-LENSES can be built from the repository. Two files are available: **Dockerfile**, for the **CLI version**, and **Dockerfile.ui**, for the **Gradio UI interface**. 
 
 **Clone the repository:**
 ```bash
@@ -265,6 +295,22 @@ curl -L -O https://zenodo.org/records/18208365/files/models.zip
 unzip models.zip -d mslenses/
 ```
 
+#### Gradio UI Docker
+**Build Docker image:** (from the `MS-LENSES/` root directory):
+```bash
+docker build -t [image_name] -f Dockerfile.ui .
+```
+
+**Run the interface:**
+```bash
+# Run with GPU (mandatory)
+docker run --gpus all --rm -p 7860:7860 [image_name]
+```
+
+*Then open `http://localhost:7860` in your browser. Advanced options (such as mounting the volume) are available in [Gradio UI image](#gradio-ui-image)*
+
+
+#### CLI Docker
 **Build Docker image:** (from the `MS-LENSES/` root directory):
 ```bash
 docker build -t [image_name] .
@@ -342,7 +388,7 @@ UNet: 0.8424
 SwinUNETR: 0.8233
 SegResNetDS: 0.8550
 
-These weights can be adjusted by modifying the `_models_weights()` function in [`utils.py`](MS-LENSES/mslenses/utils.py).
+These weights can be adjusted by modifying the `_models_weights()` function in [`utils.py`](mslenses/utils.py).
 
 
 

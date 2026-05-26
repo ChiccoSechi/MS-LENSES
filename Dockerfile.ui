@@ -1,0 +1,43 @@
+# Official PyTorch 2.7.1 image with cuda 11.8
+FROM pytorch/pytorch:2.7.1-cuda11.8-cudnn9-runtime
+
+# Metadata
+LABEL maintainer="francescosechi2505@gmail.com"
+LABEL description="MS-LENSES: Multiple Sclerosis Lesion Ensemble Segmentation System"
+
+# Environment setup
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Gradio configuration: bind to all interfaces so the UI is reachable from
+# outside the container, and pin the port explicitly.
+ENV GRADIO_SERVER_NAME=0.0.0.0
+ENV GRADIO_SERVER_PORT=7860
+
+# Set work directory
+WORKDIR /mslenses
+
+# Copy UI code and UI dependencies (Gradio UI)
+COPY gradio/ /mslenses
+
+# Copy pipeline code (excluding mslenses_CLI.py, not useful)
+COPY mslenses/MNI152/ /mslenses/MNI152/
+COPY mslenses/models/ /mslenses/models/
+COPY mslenses/nnUNet/ /mslenses/nnUNet/
+COPY mslenses/inference.py /mslenses/
+COPY mslenses/postprocessing.py /mslenses/
+COPY mslenses/preprocessing.py /mslenses/
+COPY mslenses/utils.py /mslenses/
+
+# Copy dependencies
+COPY requirements.txt /mslenses/requirements.txt
+COPY requirements-gradio.txt /mslenses/requirements-gradio.txt
+
+# Download python dependencies
+RUN pip install --no-cache-dir -r requirements-gradio.txt
+
+# Expose Gradio UI port
+EXPOSE 7860
+
+# Launch the Gradio UI
+ENTRYPOINT ["python", "mslenses_UI.py"]
